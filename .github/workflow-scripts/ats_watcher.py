@@ -1,5 +1,5 @@
 """Poll company ATS boards (Greenhouse / Lever / Ashby / Workday /
-SmartRecruiters / iCIMS) for new US software
+SmartRecruiters / iCIMS) for US and Canadian software
 engineering intern roles (general SWE, full-stack, frontend, backend,
 infra/platform, product engineering) and emit an email via GITHUB_OUTPUT,
 mirroring parse_boards.py.
@@ -288,7 +288,7 @@ def render_html(items: list) -> str:
         f'<h1 style="font-size:18px;margin:0 0 4px;color:#111;">'
         f'{len(items)} new SWE intern role{"s" if len(items) != 1 else ""}</h1>'
         '<p style="font-size:12px;color:#888;margin:0 0 8px;">'
-        'US software engineering internships — straight from company ATS '
+        'US and Canadian software engineering internships — straight from company ATS '
         'boards (Greenhouse / Lever / Ashby), usually before LinkedIn.</p>'
         '<table cellpadding="0" cellspacing="0" border="0" '
         'style="width:100%;border-collapse:collapse;">'

@@ -1,6 +1,6 @@
 """Shared title / location filters for both watchers.
 
-The target profile is a US-based general software engineering internship:
+The target profile is a US- or Canada-based general software engineering internship:
 generic SWE, full-stack, frontend, backend, infrastructure/platform, and
 product *engineering*. Product management, data science/ML, hardware, QA,
 security, and non-engineering roles are out.
@@ -57,8 +57,8 @@ SWE_RE = re.compile(
     re.I,
 )
 
-US_HINT_RE = re.compile(
-    r"united states|\busa?\b|u\.s\.|remote.*(us|america)|"
+TARGET_LOCATION_RE = re.compile(
+    r"united states|\busa?\b|u\.s\.|remote.*(us|america|canada)|"
     r"alabama|alaska|arizona|arkansas|california|colorado|connecticut|"
     r"delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|"
     r"kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|"
@@ -74,13 +74,16 @@ US_HINT_RE = re.compile(
     r"nashville|charlotte|phoenix|salt lake|"
     r",\s?(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|"
     r"MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|"
-    r"TN|TX|UT|VT|VA|WA|WV|WI|WY)\b",
+    r"TN|TX|UT|VT|VA|WA|WV|WI|WY)\b|"
+    r"canada|ontario|toronto|vancouver|montr[eé]al|quebec|calgary|ottawa|"
+    r"waterloo|british columbia|alberta|manitoba|saskatchewan|"
+    r"nova scotia|new brunswick|newfoundland|labrador|"
+    r",\s?(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT)\b"
     re.I,
 )
 
-NON_US_RE = re.compile(
-    r"canada|ontario|toronto|vancouver|montr[eé]al|quebec|calgary|ottawa|"
-    r"waterloo|british columbia|united kingdom|\buk\b|london|ireland|"
+NON_TARGET_RE = re.compile(
+    r"united kingdom|\buk\b|london|ireland|"
     r"dublin|germany|berlin|munich|france|paris|netherlands|amsterdam|"
     r"belgium|spain|madrid|barcelona|portugal|lisbon|italy|milan|"
     r"switzerland|zurich|geneva|austria|vienna|poland|warsaw|krakow|"
@@ -97,7 +100,6 @@ NON_US_RE = re.compile(
     r"nairobi|south africa|turkey|istanbul|ukraine|kyiv|serbia|belgrade|"
     r"bulgaria|sofia|croatia|zagreb|lithuania|vilnius|latvia|riga|"
     r"armenia|yerevan|cyprus|malta|luxembourg|emea|apac|latam|"
-    r",\s?(?-i:ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT)\b",
     re.I,
 )
 
@@ -114,16 +116,16 @@ def wanted_title(title: str) -> bool:
 
 
 def is_us(location: str) -> bool:
-    """US hint wins, then a clearly-foreign hint loses; ambiguous strings
+    """US/Canada hint wins, then a clearly-foreign hint loses; ambiguous strings
     (bare "Remote", city-only names) are kept rather than dropped.
 
-    Multi-location rows ("Toronto, ON · New York, NY") keep on the US hit,
+    Multi-location rows ("Toronto, ON · New York, NY") keep on the target hit,
     so a role that is US-available anywhere still gets through.
     """
     if not location:
         return True
-    if US_HINT_RE.search(location):
+    if TARGET_LOCATION_RE.search(location):
         return True
-    if NON_US_RE.search(location):
+    if NON_TARGET_RE.search(location):
         return False
     return True

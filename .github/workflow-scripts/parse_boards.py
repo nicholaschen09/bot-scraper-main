@@ -26,7 +26,7 @@ SEEN_PATH = "snapshots/seen.json"
 # headers. Only the Software Engineering section should produce alerts —
 # Product Management, Data Science/AI/ML, Quant, and Hardware rows are
 # skipped. Within that section, rows are further limited to US locations
-# by job_filters.is_us().
+# by job_filters.is_us() (US and Canada).
 SWE_SECTION_RE = re.compile(
     r"^##[^\n]*Software Engineering Internship Roles(.*?)(?=^## |\Z)",
     re.DOTALL | re.MULTILINE,
@@ -214,7 +214,7 @@ def render_html(new_main: list, new_off: list) -> str:
         f'<h1 style="font-size:18px;margin:0 0 4px;color:#111;">'
         f'{total} new internship listing{"s" if total != 1 else ""}</h1>'
         '<p style="font-size:12px;color:#888;margin:0 0 8px;">'
-        'US software engineering roles on the SimplifyJobs Summer 2026 boards.</p>'
+        'US and Canadian software engineering roles on the SimplifyJobs boards.</p>'
         f'{section("Main Board (Summer 2026)", new_main)}'
         f'{section("Off-Season Board", new_off)}'
         '<hr style="border:0;border-top:1px solid #eee;margin:20px 0 8px;">'
