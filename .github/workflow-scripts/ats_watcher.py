@@ -19,6 +19,7 @@ usual ``/jobs/search?ss=1``.
 import html
 from html.parser import HTMLParser
 import json
+import math
 import os
 import re
 import sys
@@ -32,6 +33,7 @@ from job_filters import is_us, wanted_title
 SCRIPT_DIR = Path(__file__).resolve().parent
 COMPANIES_PATH = SCRIPT_DIR / "ats_companies.json"
 SEEN_PATH = Path("snapshots/ats-seen.json")
+SIMPLIFY_SEEN_PATH = Path("snapshots/seen.json")
 
 WHITESPACE_RE = re.compile(r"\s+")
 
@@ -84,7 +86,7 @@ def _workday_jobs(company: dict) -> list:
     data = fetch_json_request(
         endpoint,
         method="POST",
-        payload={"appliedFacets": {}, "limit": 100, "offset": 0, "searchText": ""},
+        payload={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": ""},
     )
     jobs = []
     for job in data.get("jobPostings", []):
@@ -230,7 +232,10 @@ def board_jobs(company: dict) -> list:
 
 
 def display_id(company_name: str, it: dict) -> str:
-    key = f"{company_name}|{it['title']}|{it['location']}".lower()
+    title = it["title"]
+    for marker in ("🎓", "🛂", "🇺🇸", "🔥", "🔒"):
+        title = title.replace(marker, "")
+    key = f"{company_name}|{title}|{it['location']}".lower()
     return "d:" + WHITESPACE_RE.sub(" ", key).strip()
 
 
@@ -324,6 +329,13 @@ def build_subject(items: list) -> str:
 
 def main():
     matches, failed = collect_matches()
+    companies = json.loads(COMPANIES_PATH.read_text(encoding="utf-8"))
+    failure_limit = max(10, math.ceil(len(companies) * 0.20))
+    if len(failed) >= failure_limit:
+        raise SystemExit(
+            f"ATS health check failed: {len(failed)}/{len(companies)} boards "
+            f"failed (threshold {failure_limit})"
+        )
 
     first_run = not SEEN_PATH.exists()
     seen = set()
@@ -332,11 +344,20 @@ def main():
             seen = set(json.loads(SEEN_PATH.read_text(encoding="utf-8")))
         except (ValueError, OSError):
             first_run = True
+    simplify_seen = set()
+    if SIMPLIFY_SEEN_PATH.exists():
+        try:
+            simplify_seen = set(
+                json.loads(SIMPLIFY_SEEN_PATH.read_text(encoding="utf-8"))
+            )
+        except (ValueError, OSError):
+            print("WARN: could not read Simplify seen state; "
+                  "cross-source deduplication is unavailable", file=sys.stderr)
 
     new, shown = [], set()
     for it in matches:
         did = display_id(it["company"], it)
-        if it["id"] in seen or did in seen:
+        if it["id"] in seen or did in seen or did in simplify_seen:
             continue
         dkey = did
         if dkey in shown:

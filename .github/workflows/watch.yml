@@ -154,3 +154,26 @@ jobs:
             sleep 5
           done
           echo "could not push after 3 attempts"; exit 1
+
+  notify-failure:
+    if: ${{ always() && needs.watch.result == 'failure' }}
+    needs: watch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+      - name: Email workflow failure
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: Internship Watcher
+          MAIL_SUBJECT: Internship Watcher workflow failed
+          MAIL_PLAIN: |
+            The Internship Watcher workflow failed.
+            Review the failed run here:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MAIL_HTML: |
+            <p>The Internship Watcher workflow failed.</p>
+            <p><a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">Open the failed run</a></p>
+        run: python3 .github/workflow-scripts/send_email.py

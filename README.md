@@ -15,6 +15,8 @@ The workflow fetches and parses:
 
 - Summer internship listings
 - Off-season internship listings
+- The public `SimplifyJobs/Summer2027-Internships` repository's `README.md`
+  and `README-Off-Season.md` board files
 
 The board snapshots are saved as:
 
@@ -35,10 +37,11 @@ The ATS watcher supports these public board types:
 Company configurations are stored in
 `.github/workflow-scripts/ats_companies.json`.
 
-Greenhouse, Lever, and Ashby entries are already configured. Workday,
-SmartRecruiters, and iCIMS require company-specific identifiers, so only
-verified entries should be added to the JSON file. Do not invent a tenant,
-site, slug, or URL: an invalid board is reported as failed and skipped.
+The configuration includes verified public examples for Workday and Canva
+(SmartRecruiters). The iCIMS adapter is ready, but no iCIMS company entry is
+included until a company-specific public board can be verified. Each platform
+requires company-specific identifiers. Do not invent a tenant, site, slug, or
+URL: an invalid board is reported as failed and skipped.
 
 ## What roles are included
 
@@ -345,6 +348,11 @@ The watcher stores stable posting identifiers in:
 - `snapshots/seen.json` for Simplify listings
 - `snapshots/ats-seen.json` for ATS listings
 
+The Simplify parser deduplicates listings across its summer and off-season
+boards. The ATS watcher also compares normalized company, title, and location
+keys against the Simplify state before sending an ATS alert, so a role found
+by both sources is only emailed once when the fields match.
+
 The workflow commits state after a run. Do not delete these files during normal
 operation or the next run may treat existing postings as new.
 
@@ -386,6 +394,23 @@ One failed board does not stop all other boards. The workflow logs the failed
 company and continues. Verify the company's board identifier and test its
 public URL/API independently before adding or changing configuration.
 
+If at least 20% of configured ATS boards fail (with a minimum threshold of 10
+boards), the ATS job fails intentionally. The workflow then sends a failure
+alert so a widespread provider outage or configuration problem is not mistaken
+for a healthy run.
+
+## Health and failure alerts
+
+The main workflow has a failure-notification job. When a watcher run fails, it
+sends an email containing a link to the failed GitHub Actions run.
+
+The separate `Internship Watcher Health` workflow runs once daily and can also
+be started manually. It checks the recent `Internship Watcher` run history and
+fails if no watcher run occurred in the selected window or if the pinger
+cadence is unhealthy. A failed health workflow is visible in the Actions tab;
+configure GitHub notifications if you also want GitHub to notify you about
+that workflow.
+
 ### Too many or too few roles are matched
 
 Review `.github/workflow-scripts/job_filters.py`. The title filter is
@@ -400,4 +425,3 @@ with no country information are retained rather than silently discarded.
 - Do not log secret environment variables.
 - Consider keeping the repository private if you do not want the company list,
   alert configuration, and snapshots publicly visible.
-

@@ -1,5 +1,17 @@
 [
  {
+  "ats": "workday",
+  "tenant": "workday",
+  "site": "Workday_Early_Career",
+  "base_url": "https://workday.wd5.myworkdayjobs.com",
+  "name": "Workday"
+ },
+ {
+  "ats": "smartrecruiters",
+  "company": "Canva",
+  "name": "Canva"
+ },
+ {
   "ats": "ashby",
   "slug": "1password",
   "name": "1Password"

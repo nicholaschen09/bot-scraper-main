@@ -1,0 +1,20 @@
+name: Internship Watcher Health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 13 * * *'
+
+permissions:
+  actions: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+      - name: Check watcher activity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/workflow-scripts/health.py 26

@@ -35,7 +35,11 @@ def main():
 
     now = datetime.datetime.now(datetime.timezone.utc)
     cutoff = now - datetime.timedelta(hours=hours)
-    recent = [r for r in runs if parse(r["created_at"]) > cutoff]
+    recent = [
+        r for r in runs
+        if r.get("name") == "Internship Watcher"
+        and parse(r["created_at"]) > cutoff
+    ]
     if not recent:
         sys.exit(f"no runs in the last {hours}h — pinger and cron are both dead")
 
