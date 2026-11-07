@@ -78,7 +78,7 @@ TARGET_LOCATION_RE = re.compile(
     r"canada|ontario|toronto|vancouver|montr[eé]al|quebec|calgary|ottawa|"
     r"waterloo|british columbia|alberta|manitoba|saskatchewan|"
     r"nova scotia|new brunswick|newfoundland|labrador|"
-    r",\s?(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT)\b"
+    r",\s?(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT)\b",
     re.I,
 )
 
