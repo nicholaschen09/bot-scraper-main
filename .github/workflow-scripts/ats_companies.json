@@ -3,6 +3,7 @@
   "ats": "workday",
   "tenant": "workday",
   "site": "Workday_Early_Career",
+  "locale": "en-US",
   "base_url": "https://workday.wd5.myworkdayjobs.com",
   "name": "Workday"
  },

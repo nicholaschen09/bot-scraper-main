@@ -82,6 +82,7 @@ def _workday_jobs(company: dict) -> list:
     require_config(company, "tenant", "site")
     tenant, site = company["tenant"], company["site"]
     base = company.get("base_url", f"https://{tenant}.wd5.myworkdayjobs.com")
+    locale = company.get("locale", "en-US")
     endpoint = f"{base.rstrip('/')}/wday/cxs/{tenant}/{site}/jobs"
     data = fetch_json_request(
         endpoint,
@@ -99,7 +100,10 @@ def _workday_jobs(company: dict) -> list:
                 "id": f"w:{tenant}:{site}:{job.get('id') or path}",
                 "title": job.get("title", ""),
                 "location": locations,
-                "url": urllib.parse.urljoin(base.rstrip("/") + "/", path),
+                "url": (
+                    f"{base.rstrip('/')}/{locale}/{site}/"
+                    f"{path.lstrip('/')}"
+                ),
             }
         )
     return jobs
