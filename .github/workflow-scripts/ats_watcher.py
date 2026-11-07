@@ -347,9 +347,8 @@ def main():
     simplify_seen = set()
     if SIMPLIFY_SEEN_PATH.exists():
         try:
-            simplify_seen = set(
-                json.loads(SIMPLIFY_SEEN_PATH.read_text(encoding="utf-8"))
-            )
+            data = json.loads(SIMPLIFY_SEEN_PATH.read_text(encoding="utf-8"))
+            simplify_seen = set(data if isinstance(data, list) else data)
         except (ValueError, OSError):
             print("WARN: could not read Simplify seen state; "
                   "cross-source deduplication is unavailable", file=sys.stderr)

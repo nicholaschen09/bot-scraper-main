@@ -345,7 +345,8 @@ dispatch workflows. Never put that credential in this repository.
 
 The watcher stores stable posting identifiers in:
 
-- `snapshots/seen.json` for Simplify listings
+- `snapshots/seen.json` for Simplify listings, with each ID mapped to its
+  first-seen UTC date (`YYYY-MM-DD`)
 - `snapshots/ats-seen.json` for ATS listings
 
 The Simplify parser deduplicates listings across its summer and off-season

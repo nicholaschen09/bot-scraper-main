@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from job_filters import is_us
@@ -114,21 +115,28 @@ def load_seen() -> tuple:
     snapshots the first time so the switch-over doesn't spam or miss rows."""
     if os.path.exists(SEEN_PATH):
         try:
-            return set(json.loads(Path(SEEN_PATH).read_text(encoding="utf-8"))), True
+            data = json.loads(Path(SEEN_PATH).read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                # Migrate the original ID-only format on the next save.
+                today = datetime.now(timezone.utc).date().isoformat()
+                return {item: today for item in data}, True
+            if isinstance(data, dict):
+                return {str(item): str(date) for item, date in data.items()}, True
         except (ValueError, OSError):
             pass
-    seeded = set()
+    today = datetime.now(timezone.utc).date().isoformat()
+    seeded = {}
     for path in ("snapshots/previous-main.md", "snapshots/previous-offseason.md"):
         rows = parse_rows(path)
-        seeded |= set(rows)
-        seeded |= {display_id(row) for row in rows.values()}
+        for item in set(rows) | {display_id(row) for row in rows.values()}:
+            seeded[item] = today
     return seeded, False
 
 
-def save_seen(seen: set) -> None:
+def save_seen(seen: dict) -> None:
     Path(SEEN_PATH).parent.mkdir(exist_ok=True)
     Path(SEEN_PATH).write_text(
-        json.dumps(sorted(seen), indent=0) + "\n", encoding="utf-8"
+        json.dumps(dict(sorted(seen.items())), indent=2) + "\n", encoding="utf-8"
     )
 
 
@@ -274,9 +282,10 @@ def main():
         # No history at all: record the current boards without emailing.
         new_main, new_off = [], []
 
+    today = datetime.now(timezone.utc).date().isoformat()
     for rows in (curr_main, curr_off):
-        seen |= set(rows)
-        seen |= {display_id(row) for row in rows.values()}
+        for item in set(rows) | {display_id(row) for row in rows.values()}:
+            seen.setdefault(item, today)
     save_seen(seen)
 
     total = len(new_main) + len(new_off)
