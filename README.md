@@ -314,7 +314,7 @@ when run locally.
 The workflow has two triggers:
 
 - Manual `workflow_dispatch`
-- A 15-minute scheduled backstop
+- A 5-minute scheduled backstop
 
 The comments in `.github/workflows/watch.yml` describe an optional external
 pinger. A pinger can dispatch the workflow more frequently, but it is not
