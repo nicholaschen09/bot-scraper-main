@@ -84,28 +84,45 @@ def _workday_jobs(company: dict) -> list:
     base = company.get("base_url", f"https://{tenant}.wd5.myworkdayjobs.com")
     locale = company.get("locale", "en-US")
     endpoint = f"{base.rstrip('/')}/wday/cxs/{tenant}/{site}/jobs"
-    data = fetch_json_request(
-        endpoint,
-        method="POST",
-        payload={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": ""},
-    )
     jobs = []
-    for job in data.get("jobPostings", []):
-        path = job.get("externalPath") or job.get("url") or ""
-        locations = job.get("locationsText") or job.get("location") or ""
-        if isinstance(locations, list):
-            locations = " / ".join(str(value) for value in locations)
-        jobs.append(
-            {
-                "id": f"w:{tenant}:{site}:{job.get('id') or path}",
-                "title": job.get("title", ""),
-                "location": locations,
-                "url": (
-                    f"{base.rstrip('/')}/{locale}/{site}/"
-                    f"{path.lstrip('/')}"
-                ),
-            }
-        )
+    seen = set()
+    for search_text in ("intern", "co-op"):
+        offset = 0
+        while True:
+            data = fetch_json_request(
+                endpoint,
+                method="POST",
+                payload={
+                    "appliedFacets": {},
+                    "limit": 20,
+                    "offset": offset,
+                    "searchText": search_text,
+                },
+            )
+            postings = data.get("jobPostings", [])
+            for job in postings:
+                path = job.get("externalPath") or job.get("url") or ""
+                job_id = f"w:{tenant}:{site}:{job.get('id') or path}"
+                if job_id in seen:
+                    continue
+                seen.add(job_id)
+                locations = job.get("locationsText") or job.get("location") or ""
+                if isinstance(locations, list):
+                    locations = " / ".join(str(value) for value in locations)
+                jobs.append(
+                    {
+                        "id": job_id,
+                        "title": job.get("title", ""),
+                        "location": locations,
+                        "url": (
+                            f"{base.rstrip('/')}/{locale}/{site}/"
+                            f"{path.lstrip('/')}"
+                        ),
+                    }
+                )
+            offset += len(postings)
+            if not postings or offset >= data.get("total", 0):
+                break
     return jobs
 
 

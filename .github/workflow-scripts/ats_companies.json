@@ -8,6 +8,14 @@
   "name": "Workday"
  },
  {
+  "ats": "workday",
+  "tenant": "hpe",
+  "site": "Jobsathpe",
+  "locale": "en-US",
+  "base_url": "https://hpe.wd5.myworkdayjobs.com",
+  "name": "HPE"
+ },
+ {
   "ats": "smartrecruiters",
   "company": "Canva",
   "name": "Canva"
