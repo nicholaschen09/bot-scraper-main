@@ -16,9 +16,86 @@
   "name": "HPE"
  },
  {
+  "ats": "workday",
+  "tenant": "adobe",
+  "site": "external_experienced",
+  "locale": "en-US",
+  "base_url": "https://adobe.wd5.myworkdayjobs.com",
+  "name": "Adobe"
+ },
+ {
+  "ats": "workday",
+  "tenant": "motorolasolutions",
+  "site": "Careers",
+  "locale": "en-US",
+  "base_url": "https://motorolasolutions.wd5.myworkdayjobs.com",
+  "name": "Motorola Solutions"
+ },
+ {
+  "ats": "workday",
+  "tenant": "broadridge",
+  "site": "Careers",
+  "locale": "en-US",
+  "base_url": "https://broadridge.wd5.myworkdayjobs.com",
+  "name": "Broadridge"
+ },
+ {
+  "ats": "workday",
+  "tenant": "globalhr",
+  "site": "REC_RTX_Ext_Gateway",
+  "locale": "en-US",
+  "base_url": "https://globalhr.wd5.myworkdayjobs.com",
+  "name": "RTX"
+ },
+ {
+  "ats": "workday",
+  "tenant": "nvidia",
+  "site": "NVIDIAExternalCareerSite",
+  "locale": "en-US",
+  "base_url": "https://nvidia.wd5.myworkdayjobs.com",
+  "name": "NVIDIA"
+ },
+ {
+  "ats": "workday",
+  "tenant": "linklogistics",
+  "site": "Link",
+  "locale": "en-US",
+  "base_url": "https://linklogistics.wd5.myworkdayjobs.com",
+  "name": "Link Logistics"
+ },
+ {
+  "ats": "workday",
+  "tenant": "salesforce",
+  "site": "External_Career_Site",
+  "locale": "en-US",
+  "base_url": "https://salesforce.wd12.myworkdayjobs.com",
+  "name": "Salesforce"
+ },
+ {
+  "ats": "workday",
+  "tenant": "snapchat",
+  "site": "sourced",
+  "locale": "en-US",
+  "base_url": "https://snapchat.wd1.myworkdayjobs.com",
+  "name": "Snap Inc."
+ },
+ {
+  "ats": "workday",
+  "tenant": "netflix",
+  "site": "Netflix",
+  "locale": "en-US",
+  "base_url": "https://netflix.wd108.myworkdayjobs.com",
+  "name": "Netflix"
+ },
+ {
   "ats": "smartrecruiters",
   "company": "Canva",
   "name": "Canva"
+ },
+ {
+  "ats": "ashby",
+  "slug": "melius",
+  "name": "Melius"
  },
  {
   "ats": "ashby",

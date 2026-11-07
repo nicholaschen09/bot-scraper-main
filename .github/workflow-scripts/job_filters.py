@@ -12,7 +12,7 @@ halves, since an ATS board is one undifferentiated list of every open req.
 
 import re
 
-INTERN_RE = re.compile(r"\bintern(ship)?\b|\bco[- ]?op\b", re.I)
+INTERN_RE = re.compile(r"\bintern(ship)?s?\b|\bco[- ]?op\b", re.I)
 
 # Titles that count as in-profile. Generic "Software Engineer Intern" is the
 # common case — big companies rarely label the specialization — and EXCLUDE_RE

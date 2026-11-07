@@ -37,11 +37,16 @@ The ATS watcher supports these public board types:
 Company configurations are stored in
 `.github/workflow-scripts/ats_companies.json`.
 
-The configuration includes verified public examples for Workday and Canva
-(SmartRecruiters). The iCIMS adapter is ready, but no iCIMS company entry is
-included until a company-specific public board can be verified. Each platform
-requires company-specific identifiers. Do not invent a tenant, site, slug, or
-URL: an invalid board is reported as failed and skipped.
+The configuration includes verified public examples for Workday (Workday, HPE,
+Adobe, Motorola Solutions, Broadridge, RTX, NVIDIA, Link Logistics, Salesforce,
+Snap Inc., and Netflix) and Canva (SmartRecruiters). Melius and Stripe are
+configured through Ashby/Greenhouse, respectively, and Google
+DeepMind are already configured through Greenhouse. IBM and Google's main
+careers site do not currently expose a compatible public ATS endpoint in this
+watcher. The iCIMS adapter is ready, but no iCIMS company entry is included
+until a company-specific public board can be verified. Each platform requires
+company-specific identifiers. Do not invent a tenant, site, slug, or URL: an
+invalid board is reported as failed and skipped.
 
 ## What roles are included
 
