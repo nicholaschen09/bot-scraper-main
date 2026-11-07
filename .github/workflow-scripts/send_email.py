@@ -57,12 +57,29 @@ def main() -> None:
         print(msg.as_string()[:400])
         return
 
-    password = require("MAIL_PASSWORD")
+    password = require("MAIL_PASSWORD").replace(" ", "")
 
     context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=30) as smtp:
-        smtp.login(username, password)
-        smtp.send_message(msg)
+    try:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=30) as smtp:
+            smtp.ehlo()
+            smtp.login(username, password)
+            smtp.send_message(msg)
+    except smtplib.SMTPAuthenticationError as exc:
+        sys.exit(
+            "send_email: Gmail rejected authentication. "
+            "MAIL_USERNAME must be the account that created the App Password, "
+            "and MAIL_PASSWORD must be that 16-character App Password "
+            f"(SMTP {exc.smtp_code})."
+        )
+    except smtplib.SMTPServerDisconnected as exc:
+        sys.exit(
+            "send_email: Gmail closed the SMTP login connection. "
+            "The TLS connection succeeded, so check that MAIL_PASSWORD is a "
+            "current Gmail App Password (not the normal account password), "
+            "that it belongs to MAIL_USERNAME, and that no stale GitHub secret "
+            f"is being used ({exc})."
+        )
     print(f"sent: {subject!r} -> {to_addr}")
 
 
