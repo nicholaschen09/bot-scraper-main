@@ -99,7 +99,7 @@ NON_TARGET_RE = re.compile(
     r"colombia|bogot|chile|santiago|nigeria|lagos|egypt|cairo|kenya|"
     r"nairobi|south africa|turkey|istanbul|ukraine|kyiv|serbia|belgrade|"
     r"bulgaria|sofia|croatia|zagreb|lithuania|vilnius|latvia|riga|"
-    r"armenia|yerevan|cyprus|malta|luxembourg|emea|apac|latam|"
+    r"armenia|yerevan|cyprus|malta|luxembourg|emea|apac|latam|",
     re.I,
 )
 
