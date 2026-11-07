@@ -1,0 +1,156 @@
+name: Internship Watcher
+
+# Primary trigger is workflow_dispatch, fired by an external pinger (cron-job.org
+# / Cloudflare Worker). Dispatched runs skip GitHub's scheduled-event queue, which
+# was adding a median 16 min of delay and silently dropping ~58% of runs.
+# The schedule below is only a backstop for when the pinger is down.
+on:
+  workflow_dispatch:
+    inputs:
+      test_email:
+        description: 'Send a test email to prove the SMTP path works, then stop'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: write
+
+# Serialize runs: every run commits state, so overlapping runs race on the push.
+concurrency:
+  group: internship-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      # Manual escape hatch: proves credentials and SMTP reachability without
+      # waiting for a real listing to show up. Every later step is guarded on
+      # this being off, so a test run does no board work and commits no state.
+      - name: Send test email
+        if: inputs.test_email
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: Internship Watcher (test)
+          MAIL_SUBJECT: Internship Watcher SMTP test
+          MAIL_PLAIN: |
+            This is a test send from the Internship Watcher workflow.
+            If you are reading this, SMTP credentials and delivery work.
+          MAIL_HTML: '<p>This is a <b>test send</b> from the Internship Watcher workflow.<br>If you are reading this, SMTP credentials and delivery work.</p>'
+        run: python3 .github/workflow-scripts/send_email.py
+
+      # Fetched through the authenticated contents API, not raw.githubusercontent.
+      # Anonymous raw is rate limited per source IP, and Actions runners share
+      # IPs across customers, so this returned 429 unpredictably. Authenticated
+      # requests get 5000/hr instead.
+      #
+      # -f matters as much as the auth: without it curl writes the 429 body into
+      # the snapshot, exits 0, and the parser reads a board with zero rows —
+      # identical to "no new listings". Rate-limited polls were being skipped
+      # silently. Fail loudly here instead; the ATS half still runs, and the
+      # snapshot copy is guarded on this step succeeding.
+      #
+      # Fetched in parallel: the off-season board is ~1 MB and dominates.
+      - name: Fetch latest versions of both Simplify boards
+        if: ${{ !inputs.test_email }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p snapshots
+          # Pinned to the 2027 repo by name. The old Summer2026 URL still works
+          # only because GitHub redirects renamed repos, so the watcher had
+          # quietly rolled over to the 2027 board without the config saying so.
+          # -L stays as a safety net for the next season's rename.
+          api=https://api.github.com/repos/SimplifyJobs/Summer2027-Internships/contents
+          fetch() {
+            curl -sSfL --retry 5 --retry-delay 3 --retry-all-errors --max-time 40 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github.raw" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$api/$1?ref=dev" -o "$2"
+          }
+          fetch README.md current-main.md &
+          pid_main=$!
+          fetch README-Off-Season.md current-offseason.md &
+          pid_off=$!
+          wait $pid_main || { echo "main board fetch failed"; exit 1; }
+          wait $pid_off  || { echo "off-season board fetch failed"; exit 1; }
+          wc -c current-main.md current-offseason.md
+          # A truncated or error response can still be valid-ish text; require
+          # the files to be plausibly board-sized before trusting them.
+          for f in current-main.md current-offseason.md; do
+            size=$(wc -c < "$f")
+            [ "$size" -gt 50000 ] || { echo "$f is only ${size}B — refusing to parse"; exit 1; }
+          done
+
+      - name: Parse Simplify boards and build email
+        if: ${{ !inputs.test_email }}
+        id: simplify
+        run: python3 .github/workflow-scripts/parse_boards.py
+
+      # Sent by a stdlib script rather than dawidd6/action-send-mail. That action
+      # was re-downloaded from codeload on every run and started returning 429 at
+      # this poll rate; the failure lands in "Set up job", which no step-level
+      # guard can contain, so it killed whole cycles.
+      - name: Send Simplify email if new rows found
+        if: ${{ !inputs.test_email && steps.simplify.outputs.total != '0' }}
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: Internship Watcher
+          MAIL_SUBJECT: ${{ steps.simplify.outputs.subject }}
+          MAIL_HTML: ${{ steps.simplify.outputs.html_body }}
+          MAIL_PLAIN: ${{ steps.simplify.outputs.plain_body }}
+        run: python3 .github/workflow-scripts/send_email.py
+
+      # Runs even if the Simplify half failed — the two sources are independent,
+      # and a bad fetch upstream shouldn't cost us the ATS poll.
+      - name: Poll ATS boards and build email
+        id: ats
+        if: ${{ !cancelled() && !inputs.test_email }}
+        run: python3 .github/workflow-scripts/ats_watcher.py
+
+      - name: Send ATS email if new roles found
+        if: ${{ !cancelled() && !inputs.test_email && steps.ats.outputs.total != '' && steps.ats.outputs.total != '0' }}
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: Internship Watcher (ATS)
+          MAIL_SUBJECT: ${{ steps.ats.outputs.subject }}
+          MAIL_HTML: ${{ steps.ats.outputs.html_body }}
+          MAIL_PLAIN: ${{ steps.ats.outputs.plain_body }}
+        run: python3 .github/workflow-scripts/send_email.py
+
+      - name: Save Simplify snapshots for next run
+        if: ${{ !cancelled() && !inputs.test_email && steps.simplify.outcome == 'success' }}
+        run: |
+          cp current-main.md snapshots/previous-main.md
+          cp current-offseason.md snapshots/previous-offseason.md
+
+      # One workflow owning all four state files means one commit and one push,
+      # so the two watchers can no longer collide on rebase.
+      - name: Commit updated state
+        if: ${{ !cancelled() && !inputs.test_email }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add snapshots/previous-main.md snapshots/previous-offseason.md \
+                  snapshots/seen.json snapshots/ats-seen.json
+          git diff --staged --quiet && exit 0
+          git commit -m "Update watcher state"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            echo "push attempt $attempt failed; retrying"
+            git rebase --abort 2>/dev/null || true
+            sleep 5
+          done
+          echo "could not push after 3 attempts"; exit 1
