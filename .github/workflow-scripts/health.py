@@ -15,7 +15,7 @@ import statistics
 import subprocess
 import sys
 
-REPO = "jkhatri23/internship-watcher-standalone"
+REPO = "nicholaschen09/bot-scraper-main"
 FMT = "%Y-%m-%dT%H:%M:%SZ"
 # Wider than the 2 min ping: anything longer is a gap, not a cadence sample.
 MAX_PLAUSIBLE_GAP = 900

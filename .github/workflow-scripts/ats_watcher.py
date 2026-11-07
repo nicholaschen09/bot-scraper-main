@@ -153,7 +153,7 @@ def render_html(items: list) -> str:
         '<hr style="border:0;border-top:1px solid #eee;margin:20px 0 8px;">'
         '<p style="color:#aaa;font-size:11px;margin:0;">'
         'Sent by internship-watcher (ATS) · '
-        '<a href="https://github.com/jkhatri23/internship-watcher-standalone/actions" '
+        '<a href="https://github.com/nicholaschen09/bot-scraper-main/actions" '
         'style="color:#aaa;">workflow logs</a></p>'
         '</div></body></html>'
     )
