@@ -1,4 +1,5 @@
-"""Poll company ATS boards (Greenhouse / Lever / Ashby) for new US software
+"""Poll company ATS boards (Greenhouse / Lever / Ashby / Workday /
+SmartRecruiters / iCIMS) for new US software
 engineering intern roles (general SWE, full-stack, frontend, backend,
 infra/platform, product engineering) and emit an email via GITHUB_OUTPUT,
 mirroring parse_boards.py.
@@ -6,9 +7,17 @@ mirroring parse_boards.py.
 Postings hit the ATS before LinkedIn or the SimplifyJobs boards pick them
 up, so this is the fastest signal. Companies live in ats_companies.json;
 the title/location filters live in job_filters.py.
+
+Platform-specific configuration (there are intentionally no unverified sample
+boards in the JSON) is: Workday ``tenant``, ``site`` and optional ``base_url``;
+SmartRecruiters ``company``; and iCIMS ``base_url`` with optional
+``search_url``.  iCIMS ``base_url`` is the public careers host and
+``search_url`` can be used when the employer's search route differs from the
+usual ``/jobs/search?ss=1``.
 """
 
 import html
+from html.parser import HTMLParser
 import json
 import os
 import re
@@ -39,9 +48,137 @@ def fetch_json(url: str):
     raise last_err
 
 
+def fetch_json_request(url: str, method="GET", payload=None):
+    """Fetch JSON using the stdlib, including Workday's public POST endpoint."""
+    data = None
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    last_err = None
+    for _ in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:  # noqa: BLE001 - retry once, then report
+            last_err = e
+    raise last_err
+
+
+def require_config(company: dict, *fields: str) -> None:
+    missing = [field for field in fields if not company.get(field)]
+    if missing:
+        raise ValueError(
+            f"{company.get('ats', 'ATS')} board {company.get('name', '')!r} "
+            f"requires config field(s): {', '.join(missing)}"
+        )
+
+
+def _workday_jobs(company: dict) -> list:
+    # Workday identifiers are tenant + career site, not a portable company slug.
+    require_config(company, "tenant", "site")
+    tenant, site = company["tenant"], company["site"]
+    base = company.get("base_url", f"https://{tenant}.wd5.myworkdayjobs.com")
+    endpoint = f"{base.rstrip('/')}/wday/cxs/{tenant}/{site}/jobs"
+    data = fetch_json_request(
+        endpoint,
+        method="POST",
+        payload={"appliedFacets": {}, "limit": 100, "offset": 0, "searchText": ""},
+    )
+    jobs = []
+    for job in data.get("jobPostings", []):
+        path = job.get("externalPath") or job.get("url") or ""
+        locations = job.get("locationsText") or job.get("location") or ""
+        if isinstance(locations, list):
+            locations = " / ".join(str(value) for value in locations)
+        jobs.append(
+            {
+                "id": f"w:{tenant}:{site}:{job.get('id') or path}",
+                "title": job.get("title", ""),
+                "location": locations,
+                "url": urllib.parse.urljoin(base.rstrip("/") + "/", path),
+            }
+        )
+    return jobs
+
+
+def _smartrecruiters_jobs(company: dict) -> list:
+    require_config(company, "company")
+    account = company["company"]
+    data = fetch_json(
+        f"https://api.smartrecruiters.com/v1/companies/"
+        f"{urllib.parse.quote(account, safe='')}/postings?limit=100"
+    )
+    jobs = []
+    for job in data.get("content", []):
+        location = job.get("location") or {}
+        location_text = location.get("fullLocation") or " / ".join(
+            str(value) for value in (
+                location.get("city"), location.get("region"), location.get("country")
+            ) if value
+        )
+        job_id = job.get("id", job.get("ref", ""))
+        jobs.append(
+            {
+                "id": f"s:{account}:{job_id}",
+                "title": job.get("name", ""),
+                "location": location_text,
+                "url": job.get("ref")
+                or f"https://jobs.smartrecruiters.com/{account}/{job_id}",
+            }
+        )
+    return jobs
+
+
+class _ICIMSJobLinks(HTMLParser):
+    """Small dependency-free parser for the public iCIMS search page."""
+
+    def __init__(self):
+        super().__init__()
+        self.links = []
+        self._href = None
+        self._text = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "a" and "/jobs/" in attrs.get("href", "").lower():
+            self._href, self._text = attrs["href"], []
+
+    def handle_data(self, data):
+        if self._href is not None:
+            self._text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self._href is not None:
+            title = WHITESPACE_RE.sub(" ", " ".join(self._text)).strip()
+            if title:
+                self.links.append((self._href, title))
+            self._href, self._text = None, []
+
+
+def _icims_jobs(company: dict) -> list:
+    require_config(company, "base_url")
+    search_url = company.get("search_url") or (
+        company["base_url"].rstrip("/") + "/jobs/search?ss=1"
+    )
+    req = urllib.request.Request(search_url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        parser = _ICIMSJobLinks()
+        parser.feed(resp.read().decode("utf-8", errors="replace"))
+    jobs, seen = [], set()
+    for path, title in parser.links:
+        url = urllib.parse.urljoin(search_url, path)
+        if url in seen:
+            continue
+        seen.add(url)
+        jobs.append({"id": f"i:{url}", "title": title, "location": "", "url": url})
+    return jobs
+
+
 def board_jobs(company: dict) -> list:
     """Return [{id, title, location, url}] for one company's board."""
-    ats, slug = company["ats"], company["slug"]
+    ats, slug = company["ats"], company.get("slug", "")
     if ats == "greenhouse":
         data = fetch_json(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs")
         return [
@@ -83,6 +220,12 @@ def board_jobs(company: dict) -> list:
                 }
             )
         return jobs
+    if ats == "workday":
+        return _workday_jobs(company)
+    if ats == "smartrecruiters":
+        return _smartrecruiters_jobs(company)
+    if ats == "icims":
+        return _icims_jobs(company)
     raise ValueError(f"unknown ats {ats!r}")
 
 
@@ -104,7 +247,8 @@ def collect_matches() -> tuple:
                 jobs = fut.result()
             except Exception as e:  # noqa: BLE001 - one bad board can't kill the run
                 failed.append(c["name"])
-                print(f"WARN: {c['ats']}:{c['slug']} failed: {e}", file=sys.stderr)
+                board_ref = c.get("slug") or c.get("company") or c.get("name", "")
+                print(f"WARN: {c['ats']}:{board_ref} failed: {e}", file=sys.stderr)
                 continue
             for j in jobs:
                 if wanted_title(j["title"]) and is_us(j["location"]):

@@ -22,6 +22,7 @@ ROLE_RE = re.compile(
     r"back[- ]?end|front[- ]?end|full[- ]?stack|"
     r"web (developer|development|engineer)|"
     r"product (engineer|engineering)|application(s)? (engineer|developer)|"
+    r"member of technical staff|technical staff|"
     r"\bdeveloper\b|server|infrastructure|\binfra\b|platform|dev[- ]?ops|"
     r"site reliability|\bsre\b|cloud|distributed",
     re.I,
