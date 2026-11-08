@@ -130,6 +130,23 @@ jobs:
           MAIL_PLAIN: ${{ steps.ats.outputs.plain_body }}
         run: python3 .github/workflow-scripts/send_email.py
 
+      - name: Poll LinkedIn jobs and build email
+        id: linkedin
+        if: ${{ always() && !cancelled() && !inputs.test_email }}
+        run: python3 .github/workflow-scripts/linkedin_watcher.py
+
+      - name: Send LinkedIn email if new roles found
+        if: ${{ !cancelled() && !inputs.test_email && steps.linkedin.outputs.total != '' && steps.linkedin.outputs.total != '0' }}
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: Internship Watcher (LinkedIn)
+          MAIL_SUBJECT: ${{ steps.linkedin.outputs.subject }}
+          MAIL_HTML: ${{ steps.linkedin.outputs.html_body }}
+          MAIL_PLAIN: ${{ steps.linkedin.outputs.plain_body }}
+        run: python3 .github/workflow-scripts/send_email.py
+
       - name: Save Simplify snapshots for next run
         if: ${{ !cancelled() && !inputs.test_email && steps.simplify.outcome == 'success' }}
         run: |
@@ -144,7 +161,8 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add snapshots/previous-main.md snapshots/previous-offseason.md \
-                  snapshots/seen.json snapshots/ats-seen.json
+                  snapshots/seen.json snapshots/ats-seen.json \
+                  snapshots/linkedin-seen.json
           git diff --staged --quiet && exit 0
           git commit -m "Update watcher state"
           for attempt in 1 2 3; do

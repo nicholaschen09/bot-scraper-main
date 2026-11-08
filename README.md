@@ -48,6 +48,15 @@ until a company-specific public board can be verified. Each platform requires
 company-specific identifiers. Do not invent a tenant, site, slug, or URL: an
 invalid board is reported as failed and skipped.
 
+### LinkedIn jobs
+
+The workflow also polls LinkedIn's public guest jobs search endpoint without
+requiring a LinkedIn account or credentials. Searches and pagination limits
+are configured in `.github/workflow-scripts/linkedin_searches.json`. Matching
+roles are stored in `snapshots/linkedin-seen.json` and sent in a separate
+LinkedIn email. LinkedIn can rate-limit or change this public endpoint; such a
+failure is reported by the workflow rather than treated as an empty search.
+
 ## What roles are included
 
 The title filter is in `.github/workflow-scripts/job_filters.py`.
@@ -177,6 +186,7 @@ The workflow commits changes to:
 - `snapshots/previous-offseason.md`
 - `snapshots/seen.json`
 - `snapshots/ats-seen.json`
+- `snapshots/linkedin-seen.json`
 
 Without write permission, the watcher may find jobs but fail when saving state.
 
@@ -287,6 +297,18 @@ only on postings not already present in `snapshots/ats-seen.json`.
 The first local run can modify `snapshots/ats-seen.json`. Inspect the result
 before committing it.
 
+## Run the LinkedIn watcher locally
+
+```bash
+cd /Users/nicholas/Downloads/bot-scraper-main
+python3 .github/workflow-scripts/linkedin_watcher.py
+```
+
+The first successful LinkedIn run records current postings without emailing
+them. Later runs alert only on new postings. LinkedIn may rate-limit or
+temporarily reject automated requests, so inspect the workflow logs when that
+happens.
+
 ## Run the Simplify parser locally
 
 The parser expects these two files in the project root:
@@ -353,6 +375,7 @@ The watcher stores stable posting identifiers in:
 - `snapshots/seen.json` for Simplify listings, with each ID mapped to its
   first-seen UTC date (`YYYY-MM-DD`)
 - `snapshots/ats-seen.json` for ATS listings
+- `snapshots/linkedin-seen.json` for LinkedIn listings
 
 The Simplify parser deduplicates listings across its summer and off-season
 boards. The ATS watcher also compares normalized company, title, and location
